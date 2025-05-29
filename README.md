@@ -70,11 +70,9 @@ Follow these instructions to set up and run OnyxScript on your local machine.
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/YourUsername/OnyxScript.git
+    git clone https://github.com/Abimeena27/OnyxScript.git
     cd OnyxScript
     ```
-
-    *(Replace `https://github.com/YourUsername/OnyxScript.git` with your actual repository URL)*
 
 2.  **Open in your IDE:**
 
