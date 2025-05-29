@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onyx Script - Home</title>
+    <link rel="stylesheet" th:href="@{/css/styleHome.css}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+        integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <link rel="icon" th:href="@{/images/notebook.ico}" type="image/x-icon">
+
+    </head>
+
+<body>
+    <nav class="navbar navbar-dark bg-grey justify-content-end">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link profile-link" th:href="@{/profile}">
+                    <img th:src="@{/images/user.png}" alt="Profile Icon"
+                        style="width: 2em; height: 2em; vertical-align: middle;">
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <div class="page-container">
+        <aside class="sidebar">
+            <div class="sidebar-title">Notes</div>
+            <div class="note-list">
+                <div th:each="note : ${notes}" class="note-item"
+                     th:classappend="${param.selectedNoteId != null and note.notesId == param.selectedNoteId} ? active : ''">
+                    <a href="#" class="note-title-link" th:data-note-id="${note.notesId}" th:text="${note.title}">
+                    </a>
+                </div>
+                <div class="note-item" id="default-active-note" th:if="${notes == null or notes.isEmpty()}">
+                    Welcome to Onyx Script!
+                </div>
+            </div>
+            <div class="new-note-button">+</div>
+        </aside>
+        <main class="main-content">
+            <form id="noteForm" action="/saveNote" method="post">
+                
+                <input type="hidden" id="noteIdInput" name="notesId"> <input type="hidden" id="noteTitleInput" name="title"> <input type="hidden" id="noteContentInput" name="context"> <div id="note-editor" contenteditable="true"
+                    style="flex-grow: 1; border: 1px solid #555; padding: 10px; font-size: 1em; line-height: 1.6; background-color: #333; color: #f0f0f0; margin-bottom: 15px; overflow-y: auto;">
+                    <div><br></div>
+                </div>
+
+                <ul id="suggestion-box" class="hidden"
+                    style="position: absolute; background: #444; color: white; list-style: none; margin: 0; padding: 5px; border: 1px solid #888; border-radius: 5px; z-index: 1000;">
+                </ul>
+
+                <button class="save-button" id="save-note" type="submit">Save</button>
+            </form>
+            <div id="note-preview" class="hidden"></div>
+        </main>
+    </div>
+   <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const editor = document.getElementById('note-editor');
+            const newNoteButton = document.querySelector('.new-note-button');
+            const noteList = document.querySelector('.note-list');
+            const saveNoteButton = document.getElementById('save-note');
+            const noteForm = document.getElementById('noteForm');
+            const noteIdInput = document.getElementById('noteIdInput');
+            const noteTitleInput = document.getElementById('noteTitleInput');
+            const noteContentInput = document.getElementById('noteContentInput');
+
+            // --- Utility Functions ---
+            function placeCaretAtEnd(el) {
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(el);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+
+            function getCurrentBlockElement() {
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return null;
+                let node = selection.anchorNode;
+
+                while (node && node !== editor) {
+                    if (node.parentNode === editor && node.nodeType === Node.ELEMENT_NODE) return node;
+                    if (node.nodeType === Node.TEXT_NODE && node.parentNode && node.parentNode !== editor && node.parentNode.parentNode === editor) {
+                        return node.parentNode;
+                    }
+                    node = node.parentNode;
+                }
+                return null;
+            }
+
+            function clearActiveNoteItems() {
+                document.querySelectorAll('.note-item').forEach(item => item.classList.remove('active'));
+            }
+
+            // Function to extract title from editor content (mirrors backend logic)
+            function extractTitleFromEditor(htmlContent) {
+                let noteTitle = 'Untitled Note'; // Default title
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = htmlContent;
+
+                // Try to find the first heading
+                const firstHeading = tempDiv.querySelector('h1, h2, h3');
+                if (firstHeading && firstHeading.textContent.trim() !== '') {
+                    noteTitle = firstHeading.textContent.trim();
+                } else {
+                    // If no heading, take the first non-empty block of text
+                    const firstBlock = tempDiv.querySelector('div, p, li');
+                    if (firstBlock && firstBlock.textContent.trim() !== '') {
+                        noteTitle = firstBlock.textContent.trim().split('\n')[0].substring(0, 50); // Limit length
+                        if (firstBlock.textContent.trim().split('\n')[0].length > 50) {
+                            noteTitle += '...';
+                        }
+                    } else if (htmlContent.trim() !== '') {
+                        // Fallback to plain text content
+                        const plainText = tempDiv.textContent.trim();
+                        if (plainText !== '') {
+                            noteTitle = plainText.split('\n')[0].substring(0, 50);
+                            if (plainText.split('\n')[0].length > 50) {
+                                noteTitle += '...';
+                            }
+                        }
+                    }
+                }
+                return noteTitle;
+            }
+
+
+            // --- Editor Keydown Listener (for formatting and block creation) ---
+            editor.addEventListener('keydown', function (e) {
+                const isModifierKeyPressed = e.ctrlKey || e.metaKey;
+
+                if (isModifierKeyPressed) {
+                    switch (e.key.toLowerCase()) {
+                        case 'b': // Bold
+                            document.execCommand('bold');
+                            e.preventDefault();
+                            break;
+                        case 'i': // Italic
+                            document.execCommand('italic');
+                            e.preventDefault();
+                            break;
+                        case 'u': // Underline
+                            document.execCommand('underline');
+                            e.preventDefault();
+                            break;
+                    }
+                }
+
+                if (e.key === ' ') {
+                    const block = getCurrentBlockElement();
+                    if (!block) return;
+
+                    const text = block.textContent.trim();
+                    let tag = null;
+
+                    if (text === '#') tag = 'h1';
+                    else if (text === '##') tag = 'h2';
+                    else if (text === '###') tag = 'h3';
+                    else if (text === '-') tag = 'li';
+
+                    if (tag) {
+                        e.preventDefault();
+
+                        if (tag === 'li') {
+                            const ul = document.createElement('ul');
+                            const li = document.createElement('li');
+                            li.innerHTML = '&nbsp;';
+
+                            if (block.firstChild && block.firstChild.nodeType === Node.TEXT_NODE && block.firstChild.textContent.trim() === text) {
+                                block.firstChild.remove();
+                            } else {
+                                block.innerHTML = '';
+                            }
+
+                            ul.appendChild(li);
+
+                            if (block.parentNode) {
+                                block.parentNode.replaceChild(ul, block);
+                            } else {
+                                editor.appendChild(ul);
+                            }
+                            placeCaretAtEnd(li);
+                        } else {
+                            const newElem = document.createElement(tag);
+                            newElem.innerHTML = block.textContent.substring(text.length).trim() || '&nbsp;';
+
+                            if (block.parentNode) {
+                                block.parentNode.replaceChild(newElem, block);
+                            } else {
+                                editor.appendChild(newElem);
+                            }
+                            placeCaretAtEnd(newElem);
+                        }
+                    }
+                }
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+
+                    const block = getCurrentBlockElement();
+                    if (!block) return;
+
+                    const isListItem = block.nodeName.toLowerCase() === 'li';
+
+                    if (isListItem && block.textContent.trim() === '') {
+                        const parentUl = block.closest('ul');
+                        const newBlock = document.createElement('div');
+                        newBlock.innerHTML = '<br>';
+
+                        if (parentUl && parentUl.parentNode) {
+                            parentUl.parentNode.insertBefore(newBlock, parentUl.nextSibling);
+                        }
+                        block.remove();
+                        if (parentUl && parentUl.children.length === 0) {
+                            parentUl.remove();
+                        }
+                        placeCaretAtEnd(newBlock);
+                        return;
+                    }
+
+                    const newBlock = document.createElement(isListItem ? 'li' : 'div');
+                    newBlock.innerHTML = '<br>';
+
+                    if (isListItem) {
+                        block.parentNode.insertBefore(newBlock, block.nextSibling);
+                    } else {
+                        editor.insertBefore(newBlock, block.nextSibling);
+                    }
+
+                    placeCaretAtEnd(newBlock);
+                }
+            });
+
+            // --- Sidebar Functionality ---
+            // "New Note" Button
+            if (newNoteButton) {
+                newNoteButton.addEventListener('click', () => {
+                    clearActiveNoteItems(); // Remove active from previous note
+                    editor.innerHTML = '<div><br></div>'; // Clear editor for new note
+                    editor.focus();
+                    noteIdInput.value = ''; // Clear note ID for new note
+
+                    // Create a new note item in the sidebar for the "New Note"
+                    const newNoteDiv = document.createElement('div');
+                    newNoteDiv.classList.add('note-item', 'active');
+                    
+                    const newNoteLink = document.createElement('a'); // Create an <a> tag
+                    newNoteLink.setAttribute('href', '#');
+                    newNoteLink.classList.add('note-title-link');
+                    newNoteLink.dataset.noteId = 'new'; // Mark as a new note (not yet in DB)
+                    newNoteLink.textContent = 'New Note'; // Initial text, will be updated on save
+
+                    newNoteDiv.appendChild(newNoteLink); // Append the <a> to the div
+                    noteList.appendChild(newNoteDiv);
+
+                    // Attach click listener for the new note item's link
+                    newNoteLink.addEventListener('click', handleNoteItemClick);
+
+                    newNoteDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
+            }
+
+            // Function to handle clicking on a note item in the sidebar
+            function handleNoteItemClick(event) {
+                event.preventDefault(); // Prevent default link behavior if applicable
+
+                // Find the closest .note-item (in case click is on text inside a)
+                // or directly the .note-title-link if target is the link itself
+                const clickedLink = event.target.closest('.note-title-link');
+                if (!clickedLink) return;
+
+                clearActiveNoteItems();
+                clickedLink.closest('.note-item').classList.add('active'); // Add active class to the parent div
+
+                const noteId = clickedLink.dataset.noteId;
+
+                if (noteId && noteId !== 'new') {
+                    // Fetch existing note content
+                    fetch(`/api/notes/${noteId}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                // If HTTP status is 4xx or 5xx
+                                // console.error is helpful for debugging network issues
+                                console.error(`HTTP error! status: ${response.status}`);
+                                if (response.status === 404) {
+                                    throw new Error('Note not found or unauthorized.');
+                                } else {
+                                    throw new Error('Network response was not ok ' + response.statusText);
+                                }
+                            }
+                            return response.json(); // Parse the JSON response
+                        })
+                        .then(note => {
+                            if (note) {
+                                editor.innerHTML = note.context; // Load content into the editor
+                                noteIdInput.value = note.notesId; // Set the hidden note ID
+                                noteTitleInput.value = note.title; // Set the hidden note title
+                                placeCaretAtEnd(editor); // Place caret at end after loading content
+                            } else {
+                                editor.innerHTML = '<div>Error: Could not load note.</div>';
+                                noteIdInput.value = '';
+                                noteTitleInput.value = '';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching note:', error);
+                            editor.innerHTML = `<div>Error loading note: ${error.message}</div>`;
+                            noteIdInput.value = '';
+                            noteTitleInput.value = '';
+                        });
+                } else {
+                    // It's a "new" note or default welcome message placeholder
+                    editor.innerHTML = '<div><br></div>'; // Clear editor for new note
+                    noteIdInput.value = ''; // Ensure ID is clear for new notes
+                    noteTitleInput.value = ''; // Ensure title is clear for new notes
+                    editor.focus();
+                }
+            }
+            console.log(document.getElementById('noteIdInput'));
+            console.log(document.getElementById('noteTitleInput'));
+            console.log(document.getElementById('noteContentInput'));
+
+            // --- IMPORTANT: Attach click listeners to all existing note items in the sidebar ---
+            // This runs once when the page loads, attaching listeners to all notes rendered by Thymeleaf.
+            document.querySelectorAll('.note-list .note-item a').forEach(link => {
+                link.addEventListener('click', handleNoteItemClick);
+            });
+
+
+            // --- Save Note Functionality (using form submission) ---
+            if (noteForm) {
+                noteForm.addEventListener('submit', (event) => {
+                    event.preventDefault(); // Stop the default form submission temporarily
+
+                    const noteContentHTML = editor.innerHTML;
+                    const currentNoteItemLink = document.querySelector('.note-item.active .note-title-link');
+
+                    if (!currentNoteItemLink) {
+                        alert('Please select or create a note to save.');
+                        return;
+                    }
+
+                    // Extract title and set into hidden input
+                    const noteTitle = extractTitleFromEditor(noteContentHTML);
+                    noteTitleInput.value = noteTitle;
+
+                    // Update sidebar text for the active note item
+                    currentNoteItemLink.textContent = noteTitle;
+
+                    // Populate hidden content input
+                    noteContentInput.value = noteContentHTML;
+
+                    // If it's a 'new' note from the sidebar, it won't have a real ID yet.
+                    // The backend will assign one. We don't need to manually update data-note-id here
+                    // as the redirect will re-render the sidebar with correct IDs.
+
+                    // Now, submit the form programmatically
+                    noteForm.submit();
+
+                    console.log('Attempting to send note content via form submission.');
+                });
+            }
+
+            // --- Initial Note Loading/Activation ---
+            // This block handles which note is displayed when the page first loads.
+            const existingNoteItems = document.querySelectorAll('.note-list .note-item a');
+            const hasBackendNotes = Array.from(existingNoteItems).some(link => link.dataset.noteId && link.dataset.noteId !== 'new');
+
+            // Get selectedNoteId from URL parameters if present (used after save/update redirect)
+            const urlParams = new URLSearchParams(window.location.search);
+            const selectedNoteIdParam = urlParams.get('selectedNoteId');
+
+            if (selectedNoteIdParam) {
+                // If a specific note ID was passed in the URL (e.g., after saving)
+                const noteToSelect = document.querySelector(`.note-item a[data-note-id="${selectedNoteIdParam}"]`);
+                if (noteToSelect) {
+                    noteToSelect.click(); // Simulate a click to load its content
+                } else {
+                    // Fallback if the requested note isn't found (e.g., deleted or error)
+                    if (hasBackendNotes) {
+                        const firstRealNoteLink = document.querySelector('.note-list .note-item a[data-note-id]:not([data-note-id="new"])');
+                        if (firstRealNoteLink) {
+                            firstRealNoteLink.click();
+                        } else {
+                            // No real notes to select, clear editor
+                            editor.innerHTML = '<div><br></div>';
+                            noteIdInput.value = '';
+                            noteTitleInput.value = '';
+                            clearActiveNoteItems();
+                        }
+                    } else {
+                        // No notes from backend at all, show default welcome
+                        const defaultNote = document.getElementById('default-active-note');
+                        if (defaultNote) {
+                            clearActiveNoteItems();
+                            defaultNote.classList.add('active');
+                            editor.innerHTML = `<div>${defaultNote.textContent || '<br>'}</div>`;
+                            noteIdInput.value = '';
+                            noteTitleInput.value = '';
+                        } else {
+                            editor.innerHTML = '<div><br></div>';
+                            noteIdInput.value = '';
+                            noteTitleInput.value = '';
+                        }
+                    }
+                }
+            } else if (hasBackendNotes) {
+                // If there are notes from the backend, and no specific note was requested, click the first one
+                const firstRealNoteLink = document.querySelector('.note-list .note-item a[data-note-id]:not([data-note-id="new"])');
+                if (firstRealNoteLink) {
+                    firstRealNoteLink.click(); // Simulate a click to load its content
+                }
+            } else {
+                // If no notes from backend, show default welcome message or clear editor
+                const defaultNote = document.getElementById('default-active-note');
+                if (defaultNote) {
+                    clearActiveNoteItems();
+                    defaultNote.classList.add('active');
+                    editor.innerHTML = `<div>${defaultNote.textContent || '<br>'}</div>`;
+                    noteIdInput.value = '';
+                    noteTitleInput.value = '';
+                    editor.focus();
+                    placeCaretAtEnd(editor);
+                } else {
+                     editor.innerHTML = '<div><br></div>';
+                     noteIdInput.value = '';
+                     noteTitleInput.value = '';
+                     editor.focus();
+                }
+            }
+        });
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+        integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"
+        integrity="sha384-eMNCOe7tCwlSA/lPj0y/fi/euDQVbiMzlzBgWca+8ZjWGYEhcVJAl4u0MQR0Kb1IJ"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+        integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

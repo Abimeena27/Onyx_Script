@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Profile - Onyx Script</title>
+    <link rel="stylesheet" href="/css/styleProfile.css">
+</head>
+<body>
+
+<div class="navbar">
+    <div class="left-nav">
+        <a href="Home.html" class="nav-link">Onyx Script</a>
+    </div>
+    <div class="nav-item">
+        <a href="Profile.html" class="nav-link profile-link">Profile</a>
+    </div>
+</div>
+
+<div class="profile-page-container">
+    <div class="profile-card">
+        <div class="profile-avatar">
+            <img src="/images/user.png" alt="Avatar" class="avatar-img">
+            <div class="username" th:text="${user.fullName}"></div>
+        </div>
+
+        <div class="profile-info">
+            <div class="info-item">
+                <span class="info-label">Email:</span>
+                <span class="info-value" th:text="${user.email}"></span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>

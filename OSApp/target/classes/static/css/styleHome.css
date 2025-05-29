@@ -1,0 +1,205 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #181818; /* Dark background */
+    color: #e0e0e0; /* Light text */
+    display: flex;
+    flex-direction: column; /* Stack navbar and page container */
+    min-height: 100vh;
+}
+
+.navbar {
+    background-color: #2c2c2c;
+    color: #f0f0f0;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end; /* Align content to the right */
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%; /* Full width */
+    height: auto; /* Take natural content height */
+    border-bottom: 2px solid transparent; /* Make the initial bottom border transparent */
+    border-image: linear-gradient(to right, #cc66ff, #00ffff, #cc66ff); /* Purple, Cyan, Purple */
+    border-image-slice: 1;
+    animation: animated-navbar-border 2s linear infinite alternate; /* New animation name */    
+    position: sticky; /* Stick to the top */
+    top: 0;
+    z-index: 1000; /* Ensure it's above other content */
+}
+
+.navbar .navbar-nav {
+    margin-left: auto; /* Push items to the right */
+    display: flex;
+    align-items: center; /* Vertically align items */
+    height: auto;
+}
+
+.navbar .nav-item {
+    display: flex;
+    align-items: center;
+    height: auto;
+}
+
+.navbar .nav-link.profile-link {
+    font-size: 2em;
+    color: #00ffff;
+    text-decoration: none; /* Remove default link underline */
+    display: flex;
+    align-items: center;
+    height: auto;
+}
+
+.navbar .nav-link.profile-link:hover {
+    color: #c0a3ff; /* Lighter purple on hover */
+}
+
+.page-container {
+    display: flex; /* Arrange sidebar and main content horizontally */
+    flex-grow: 1; /* Take up remaining vertical space */
+    width: 100%; /* Full width */
+}
+
+@keyframes animated-border {
+    0% { border-image-source: linear-gradient(to bottom, #ff00ff, , #ff00ff); border-image-slice: 1; }
+    100% { border-image-source: linear-gradient(to bottom, #00ffff,#ff00ff , #00ffff); border-image-slice: 1; }
+}
+
+.sidebar {
+    background-color: #2c2c2c; /* Darker background for sidebar */
+    width: 250px; /* Fixed width for the sidebar */
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background-clip: padding-box; /* Optional: Prevent background bleed */
+    border-right: 2px solid transparent; /* Important base for border-image */
+    border-image: linear-gradient(to bottom, #ff00ff, #00ffff, #ff00ff);
+    border-image-slice: 1;
+    animation: animated-border 1s linear infinite alternate;
+}
+
+.sidebar-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #a78bfa; /* Purple accent for sidebar title */
+}
+
+.note-list {
+    margin-bottom: 20px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.note-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #333; /* Dark background for note items */
+    color: #e0e0e0;
+    transition: background-color 0.2s ease;
+}
+
+.note-item:hover {
+    background-color: #444;
+}
+
+.note-item.active {
+    background-color: #a78bfa; /* Purple accent for active note */
+    color: #f0f0f0;
+    font-weight: bold;
+}
+
+.note-item a{ /* Targeting the <a> tag specifically */
+            color: #f0f0f0; /* Inherit color from parent (.note-item or .note-item.active) */
+            text-decoration: none; /* !!! IMPORTANT: Removes the underline !!! */
+            display: block; /* Make the whole area of the 'a' tag clickable */
+            padding: 8px 10px; /* Add padding for clickable area */
+            box-sizing: border-box; /* Include padding in the element's total width and height */
+            width: 100%; /* Make the link fill its parent's width */
+            height: 100%; /* Make the link fill its parent's height */
+        }
+
+        /* Remove hover effect from the link itself, as the parent div handles it */
+        .note-item a.note-title-link:hover {
+            background-color: transparent; /* No separate background on link hover, parent handles it */
+            color: inherit; /* Keep inherited color */
+        }
+
+.new-note-button {
+    background-color: #00b894; /* Teal for new note button */
+    color: #212121;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    cursor: pointer;
+    align-self: flex-end;
+    transition: background-color 0.2s ease;
+}
+
+.new-note-button:hover {
+    background-color: #009788;
+}
+
+.main-content {
+    flex-grow: 1; /* Take up remaining horizontal space */
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background-color: #333;
+    padding-left: 10px; /* Add some spacing */
+}
+
+#note-editor {
+    /* flex-grow: 1; (already inline in the example above) */
+    border: 1px solid #555;
+    padding: 10px;
+    font-size: 1em;
+    line-height: 1.6;
+    /* resize: none; (not applicable to div) */
+    background-color: #333; /* Dark background for editor */
+    color: #f0f0f0;
+    margin-bottom: 15px; /* Add some space for the save button */
+    overflow-y: auto; /* Add scroll if content overflows */
+    white-space: pre-wrap; /* To respect line breaks */
+}
+
+#note-editor::placeholder {
+    color: #777; /* Dark placeholder text */
+}
+#note-preview {
+    margin-top: 20px;
+    border: 1px solid #555;
+    padding: 10px;
+    font-size: 1em;
+    line-height: 1.6;
+    white-space: pre-wrap; /* Preserve formatting */
+    background-color: #333; /* Dark background for preview */
+    color: #f0f0f0;
+}
+
+.hidden {
+    display: none;
+}
+
+.save-button {
+    background-color: #64b5f6; /* Blue save button */
+    color: #212121;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    align-self: flex-end; /* Position it to the right bottom of the main content */
+    transition: background-color 0.2s ease;
+}
+
+.save-button:hover {
+    background-color: #42a5f5;
+}

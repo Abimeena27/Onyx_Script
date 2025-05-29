@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | Onyx Script</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <h1>Onyx Script</h1>
+        <p class="tagline">Your personal note-taking assistant</p>
+
+        <div class="card-container">
+            <div class="card" id="card">
+                <!-- Login Front -->
+                <div class="front">
+                    <h2>Login</h2>
+                    <form th:action="@{/login}" th:object="${user}" method="post" id="loginForm">
+                        <div class="input-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" th:field="*{email}" required />
+                        </div>
+                        <div class="input-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" th:field="*{password}" required />
+                        </div>
+                        <button type="submit" class="button">Login</button>
+                    </form>
+                    <button class="switch-button" onclick="flipCard()">Don't have an account? Sign up</button>
+                </div>
+
+                <!-- Signup Back -->
+                <div class="back">
+                    <h2>Sign Up</h2>
+                    <form th:action="@{/signup}" th:object="${user}" method="post" id="signupForm">
+                        <div class="input-group">
+                            <label for="fullName">Name</label>
+                            <input type="text" id="fullName" th:field="*{fullName}" required />
+                        </div>
+                        <div class="input-group">
+                            <label for="signupEmail">Email</label>
+                            <input type="email" id="signupEmail" th:field="*{email}" required />
+                        </div>
+                        <div class="input-group">
+                            <label for="signupPassword">Password</label>
+                            <input type="password" id="signupPassword" th:field="*{password}" required />
+                        </div>
+                        <button type="submit" class="button">Sign Up</button>
+                    </form>
+                    <button class="switch-button" onclick="flipCard()">Already have an account? Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function flipCard() {
+        const card = document.getElementById('card');
+        card.classList.toggle('flipped');
+    }
+    </script>
+</body>
+</html>
