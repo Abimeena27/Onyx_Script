@@ -1,6 +1,5 @@
 # OnyxScript: A Lightweight Web-Based Rich Text Note Editor
 
-*(Replace this with a real screenshot of your application\!)*
 
 ## Table of Contents
 
